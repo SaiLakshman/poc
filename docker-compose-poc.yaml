@@ -1,0 +1,449 @@
+version: '2'
+
+networks:
+  poc:
+  
+services:
+
+  zookeeper0:
+    container_name: zookeeper0
+    extends:
+      file: base.yaml
+      service: zookeeper
+    environment:
+      - ZOO_MY_ID=1
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+    volumes:
+      - ./var/hyperledger/zookeeper0/data:/data
+      - ./var/hyperledger/zookeeper0/datalog:/datalog
+    networks:
+      - poc
+
+  zookeeper1:
+    container_name: zookeeper1
+    extends:
+      file: base.yaml
+      service: zookeeper
+    environment:
+      - ZOO_MY_ID=2
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+    volumes:
+      - ./var/hyperledger/zookeeper1/data:/data
+      - ./var/hyperledger/zookeeper1/datalog:/datalog
+    networks:
+      - poc
+
+  zookeeper2:
+    container_name: zookeeper2
+    extends:
+      file: base.yaml
+      service: zookeeper
+    environment:
+      - ZOO_MY_ID=3
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+    volumes:
+      - ./var/hyperledger/zookeeper2/data:/data
+      - ./var/hyperledger/zookeeper2/datalog:/datalog
+    networks:
+      - poc
+
+  kafka0:
+    container_name: kafka0
+    extends:
+      file: base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=0
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    volumes:
+      - ./var/hyperledger/kafka0:/tmp/kafka-logs
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - poc
+
+  kafka1:
+    container_name: kafka1
+    extends:
+      file: base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    volumes:
+      - ./var/hyperledger/kafka1:/tmp/kafka-logs
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - poc
+
+  kafka2:
+    container_name: kafka2
+    extends:
+      file: base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=2
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    volumes:
+      - ./var/hyperledger/kafka2:/tmp/kafka-logs
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - poc
+
+  kafka3:
+    container_name: kafka3
+    extends:
+      file: base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    volumes:
+      - ./var/hyperledger/kafka3:/tmp/kafka-logs
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - poc
+      
+  orderer.poc:
+    container_name: orderer.poc
+    extends:
+      file: base.yaml
+      service: orderer
+    volumes:
+      - ./var/hyperledger/orderer:/var/hyperledger/production
+      - ./orderer/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      - ./crypto-config/ordererOrganizations/poc/orderers/orderer.poc/msp:/var/hyperledger/orderer/msp
+      - ./crypto-config/ordererOrganizations/poc/orderers/orderer.poc/tls/:/var/hyperledger/orderer/tls
+    depends_on:
+      - kafka0
+      - kafka1
+      - kafka2
+      - kafka3
+    ports:
+      - 7050:7050
+    networks:
+      - poc
+
+  peer0.org1:
+    container_name: peer0.org1
+    extends:
+      file: base.yaml
+      service: peer
+    environment:
+      - CORE_PEER_ID=peer0.org1
+      - CORE_PEER_ADDRESS=peer0.org1:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdbOrg1:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - ./var/hyperledger/peer0.org1:/var/hyperledger/production
+      - ./crypto-config/peerOrganizations/org1/peers/peer0.org1/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/org1/peers/peer0.org1/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 7051:7051
+      - 7053:7053
+    depends_on:
+      - orderer.poc
+    networks:
+      - poc
+
+  peer1.org1:
+    container_name: peer1.org1
+    extends:
+      file: base.yaml
+      service: peer
+    environment:
+      - CORE_PEER_ID=peer1.org1
+      - CORE_PEER_ADDRESS=peer1.org1:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdbOrg1:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - ./var/hyperledger/peer1.org1:/var/hyperledger/production
+      - ./crypto-config/peerOrganizations/org1/peers/peer1.org1/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/org1/peers/peer1.org1/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 7056:7051
+      - 7058:7053
+    depends_on:
+      - orderer.poc
+    networks:
+      - poc
+
+  peer0.org2:
+    container_name: peer0.org2
+    extends:
+      file: base.yaml
+      service: peer
+    environment:
+      - CORE_PEER_ID=peer0.org2
+      - CORE_PEER_ADDRESS=peer0.org2:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2:7051
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdbOrg2:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - ./var/hyperledger/peer0.org2:/var/hyperledger/production
+      - ./crypto-config/peerOrganizations/org2/peers/peer0.org2/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/org2/peers/peer0.org2/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 8051:7051
+      - 8053:7053
+    depends_on:
+      - orderer.poc
+    networks:
+      - poc
+  
+  peer1.org2:
+    container_name: peer1.org2
+    extends:
+      file: base.yaml
+      service: peer
+    environment:
+      - CORE_PEER_ID=peer1.org2
+      - CORE_PEER_ADDRESS=peer1.org2:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org2:7051
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdbOrg2:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - ./var/hyperledger/peer1.org2:/var/hyperledger/production
+      - ./crypto-config/peerOrganizations/org2/peers/peer1.org2/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/org2/peers/peer1.org2/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 8056:7051
+      - 8058:7053
+    depends_on:
+      - orderer.poc
+    networks:
+      - poc
+      
+  peer0.org3:
+    container_name: peer0.org3
+    extends:
+      file: base.yaml
+      service: peer
+    environment:
+      - CORE_PEER_ID=peer0.org3
+      - CORE_PEER_ADDRESS=peer0.org3:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org3:7051
+      - CORE_PEER_LOCALMSPID=Org3MSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdbOrg3:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - ./var/hyperledger/peer0.org3:/var/hyperledger/production
+      - ./crypto-config/peerOrganizations/org3/peers/peer0.org3/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/org3/peers/peer0.org3/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 9051:7051
+      - 9053:7053
+    depends_on:
+      - orderer.poc
+    networks:
+      - poc
+  
+  peer1.org3:
+    container_name: peer1.org3
+    extends:
+      file: base.yaml
+      service: peer
+    environment:
+      - CORE_PEER_ID=peer1.org3
+      - CORE_PEER_ADDRESS=peer1.org3:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org3:7051
+      - CORE_PEER_LOCALMSPID=Org3MSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdbOrg3:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    volumes:
+      - ./var/hyperledger/peer1.org3:/var/hyperledger/production
+      - ./crypto-config/peerOrganizations/org3/peers/peer1.org3/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/org3/peers/peer1.org3/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 9056:7051
+      - 9058:7053
+    depends_on:
+      - orderer.poc
+    networks:
+      - poc
+
+  couchdbOrg1:
+    container_name: couchdbOrg1
+    image: hyperledger/fabric-couchdb:latest
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 7055:5984
+    volumes:
+      - ./var/hyperledger/couchdbOrg1:/opt/couchdb/data
+    networks:
+      - poc
+  
+  couchdbOrg2:
+    container_name: couchdbOrg2
+    image: hyperledger/fabric-couchdb:latest
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 8055:5984
+    volumes:
+      - ./var/hyperledger/couchdbOrg2:/opt/couchdb/data
+    networks:
+      - poc
+
+  couchdbOrg3:
+    container_name: couchdbOrg3
+    image: hyperledger/fabric-couchdb:latest
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 9055:5984
+    volumes:
+      - ./var/hyperledger/couchdbOrg3:/opt/couchdb/data
+    networks:
+      - poc
+  
+
+  ca.org1:
+    image: hyperledger/fabric-ca:latest
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.org1
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/39d2a58da5cc5bbe868092884c092a0c8f241c9204f4e074e84bd8261a4df7a0_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/39d2a58da5cc5bbe868092884c092a0c8f241c9204f4e074e84bd8261a4df7a0_sk
+    ports:
+      - 7054:7054
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    volumes:
+      - ./crypto-config/peerOrganizations/org1/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.org1
+    
+  ca.org2:
+    image: hyperledger/fabric-ca:latest
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.org2
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org2-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/a2b6737af6d0457725ab09184ac03b54c6ce62f07b4e218af473d60481dce9f7_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org2-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/a2b6737af6d0457725ab09184ac03b54c6ce62f07b4e218af473d60481dce9f7_sk
+    ports:
+      - 8054:7054
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    volumes:
+      - ./crypto-config/peerOrganizations/org2/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.org2
+
+  ca.org3:
+    image: hyperledger/fabric-ca:latest
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.org3
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org3-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/13c9f22bb6516cb3e9565fef36f2bdfb0f144f4124acdc9de4b3042bf192b2f0_sk
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org3-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/13c9f22bb6516cb3e9565fef36f2bdfb0f144f4124acdc9de4b3042bf192b2f0_sk
+    ports:
+      - 9054:7054
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    volumes:
+      - ./crypto-config/peerOrganizations/org3/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.org3
+    
+  
+  cli.org1:
+    extends:
+      file: base.yaml
+      service: cli
+    container_name: cli.org1
+    environment:
+      - CORE_PEER_ID=cli.org1
+      - CORE_PEER_ADDRESS=peer0.org1:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org1/msp
+    volumes:
+      - ./crypto-config/peerOrganizations/org1:/etc/hyperledger/msp
+      - ./crypto-config/peerOrganizations/org1/peers/peer0.org1/tls:/etc/hyperledger/tls
+    depends_on:
+      - orderer.poc
+      - peer0.org1
+    networks:
+      - poc
+
+  cli.org2:
+    extends:
+      file: base.yaml
+      service: cli
+    container_name: cli.org2
+    environment:
+      - CORE_PEER_ID=cli.org2
+      - CORE_PEER_ADDRESS=peer0.org2:7051
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org2/msp
+    volumes:
+      - ./crypto-config/peerOrganizations/org2:/etc/hyperledger/msp
+      - ./crypto-config/peerOrganizations/org2/peers/peer0.org2/tls:/etc/hyperledger/tls
+    depends_on:
+      - orderer.poc
+      - peer0.org2
+    networks:
+      - poc
+
+  cli.org3:
+    extends:
+      file: base.yaml
+      service: cli
+    container_name: cli.org3
+    environment:
+      - CORE_PEER_ID=cli.org3
+      - CORE_PEER_ADDRESS=peer0.org3:7051
+      - CORE_PEER_LOCALMSPID=Org3MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@org3/msp
+    volumes:
+      - ./crypto-config/peerOrganizations/org3:/etc/hyperledger/msp
+      - ./crypto-config/peerOrganizations/org3/peers/peer0.org3/tls:/etc/hyperledger/tls
+    depends_on:
+      - orderer.poc
+      - peer0.org3
+    networks:
+      - poc
